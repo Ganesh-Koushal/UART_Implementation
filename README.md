@@ -1,266 +1,162 @@
-UART Transmitter using Verilog HDL
-Project Overview
+# UART Transmitter using Verilog HDL
 
-This project implements a UART (Universal Asynchronous Receiver Transmitter) Transmitter using Verilog HDL. The design was developed and validated as part of the VLSI-CAD 2026 Internship conducted by the Department of Electronics and Communication Engineering, NIT Rourkela.
+## Project Overview
 
-The project demonstrates the complete digital design flow, beginning from RTL design and simulation, progressing through FPGA implementation on the Boolean Board, and finally validating serial communication using both Tera Term on a laptop and a Bluetooth Serial Terminal application on a mobile device.
+This project implements a **UART (Universal Asynchronous Receiver Transmitter) Transmitter** in Verilog HDL, developed and validated during the **VLSI-CAD 2026 Internship**, Department of Electronics and Communication Engineering, **NIT Rourkela**.
 
-Unlike simulation-only projects, this work provided practical exposure to real hardware implementation, FPGA deployment, and communication protocol validation.
+The project covers the complete digital design flow — RTL design and simulation, FPGA implementation on the **Boolean Board**, and real-world serial communication validation using **Tera Term** (laptop) and a **Bluetooth Serial Terminal** app (mobile). Unlike simulation-only projects, this work involved actual hardware deployment and protocol-level validation.
 
-Objectives
-Design a UART transmitter using Verilog HDL.
-Implement button-controlled serial data transmission.
-Perform functional verification using a dedicated testbench.
-Deploy the design on FPGA hardware.
-Validate UART communication through external terminal applications.
-Gain hands-on experience with FPGA prototyping and hardware debugging.
-UART Protocol Basics
+---
 
-UART is one of the most commonly used serial communication protocols in embedded systems, microcontrollers, FPGA-based systems, and industrial electronics.
+## Objectives
+
+- Design a UART transmitter in Verilog HDL
+- Implement button-controlled serial data transmission
+- Verify functionality using a dedicated testbench
+- Deploy the design on FPGA hardware
+- Validate UART communication via external terminal applications
+- Gain hands-on experience with FPGA prototyping and hardware debugging
+
+---
+
+## UART Protocol Basics
+
+UART is one of the most widely used serial communication protocols in embedded systems, microcontrollers, and FPGA-based systems. It is **asynchronous** — no shared clock line is needed between transmitter and receiver.
 
 A UART frame consists of:
 
-1 Start Bit (Logic 0)
-8 Data Bits (LSB First)
-1 Stop Bit (Logic 1)
+| Field | Value |
+|---|---|
+| Start Bit | Logic 0 |
+| Data Bits | 8 bits, LSB first |
+| Stop Bit | Logic 1 |
 
-Transmission occurs asynchronously, meaning no separate clock line is required between the transmitter and receiver.
+```
+Start Bit → D0 → D1 → D2 → D3 → D4 → D5 → D6 → D7 → Stop Bit
+```
 
-Example UART Frame:
+---
 
-Start Bit → Data[0] → Data[1] → Data[2] → Data[3] → Data[4] → Data[5] → Data[6] → Data[7] → Stop Bit
+## Repository Structure
 
-Project Architecture
-
-The design consists of three RTL modules integrated through a top-level module.
-
+```
 UART/
-│
 ├── Source_code/
-│ ├── top.v
-│ ├── transmit_debouncingg.v
-│ └── transmitter.v
-│
+│   ├── top.v
+│   ├── transmit_debouncingg.v
+│   └── transmitter.v
 ├── Testbench/
-│ └── top_tb.v
-│
+│   └── top_tb.v
 └── README.md
+```
 
-Module Description
-1. top.v
+---
 
-This is the top-level integration module.
+## Module Description
 
-Responsibilities:
+### `top.v` — Top-Level Integration
+- Connects FPGA switches to UART data input
+- Interfaces push-button controls with the transmitter
+- Instantiates the debouncing and transmitter modules
+- Provides debug outputs for signal monitoring
 
-Connects FPGA switches to UART data input.
-Interfaces push-button controls with the transmitter.
-Instantiates the debouncing module.
-Instantiates the UART transmitter module.
-Provides debug outputs for monitoring signals.
+**Inputs:** `clk`, `btn0` (Reset), `btn1` (Transmit Trigger), `sw[7:0]` (Data Input)
+**Outputs:** `TxD`, Debug Signals
 
-Inputs:
+### `transmit_debouncingg.v` — Button Debouncing
+Mechanical push-buttons produce unwanted signal transitions ("bouncing"). This module cleans that up:
+- Synchronizes the button signal using a two flip-flop synchronizer
+- Filters glitches with a counter-based debounce mechanism
+- Prevents accidental multiple transmissions
 
-clk
-btn0 (Reset)
-btn1 (Transmit Trigger)
-sw[7:0] (Data Input)
+**Key concepts:** clock domain synchronization, two flip-flop synchronizer, counter-based debouncing, edge stabilization
 
-Outputs:
+### `transmitter.v` — UART Serial Transmission
+- Generates UART bit timing via a baud rate generator
+- Loads parallel input data and adds start/stop bits
+- Serializes data through a shift register
+- Controlled by an FSM (**Idle** → **Transmit** → back to **Idle**)
 
-TxD
-Debug Signals
-2. transmit_debouncingg.v
+**Internal components:** Baud Rate Generator, Shift Register, Bit Counter, FSM Controller
 
-Mechanical push-buttons generate unwanted signal transitions known as switch bouncing.
+---
 
-This module:
+## Verification Strategy
 
-Synchronizes the push-button signal using two flip-flops.
-Filters glitches using a counter-based debounce mechanism.
-Generates a clean transmit signal.
-Prevents accidental multiple UART transmissions.
+Verified using a dedicated testbench (`top_tb.v`) that generates a 100 MHz clock, applies reset sequences, simulates button presses, and monitors UART output.
 
-Key Concepts Used:
+| Test Case | Input Data | Expected Output | Purpose |
+|---|---|---|---|
+| 1 | `0xAA` | `10101010` | Alternating bit transmission |
+| 2 | `0x55` | `01010101` | Complementary alternating pattern |
+| 3 | `0x00` | `00000000` | All-zero transmission |
+| 4 | `0xFF` | `11111111` | All-one transmission |
 
-Clock Domain Synchronization
-Two Flip-Flop Synchronizer
-Counter-Based Debouncing
-Edge Stabilization
-3. transmitter.v
+---
 
-This module performs UART serial transmission.
+## FPGA Implementation
 
-Responsibilities:
+After successful simulation, the design was synthesized, implemented, and programmed onto the **Boolean FPGA Board**.
 
-Generates UART bit timing.
-Loads parallel input data.
-Adds start and stop bits.
-Serializes data using a shift register.
-Controls transmission through a finite state machine.
+- RTL synthesis → implementation → bitstream generation → FPGA programming → hardware debugging
+- **Hardware inputs:** switches (8-bit data entry), push-button (transmit trigger), reset button
 
-Internal Components:
+---
 
-Baud Rate Generator
-Shift Register
-Bit Counter
-FSM Controller
+## Hardware Validation
 
-FSM States:
+The UART transmitter was validated through two independent real-world interfaces:
 
-Idle State:
+**Tera Term (Laptop)**
+- Correct reception of transmitted characters
+- Stable serial communication
+- Proper UART frame generation
 
-Waits for transmit signal.
+**Bluetooth Serial Terminal (Mobile)**
+- Successful wireless serial communication
+- Correct data reception on the mobile app
+- Behavior consistent with the hardware implementation
 
-Transmit State:
+This confirmed the transmitter's correctness beyond simulation, across both wired and wireless interfaces.
 
-Shifts data bits serially through TxD.
-Tracks transmitted bits.
-Returns to Idle after frame completion.
-Verification Strategy
+---
 
-The design was verified using a dedicated Verilog testbench.
+## Key Concepts Demonstrated
 
-Testbench File:
+Verilog RTL Design · FSM Design · UART Communication Protocol · Shift Register Design · Baud Rate Generation · Counter Design · Button Debouncing · Clock Synchronization · Testbench Development · Functional Verification · FPGA Implementation Flow · Hardware Debugging · Serial Communication Validation
 
-top_tb.v
+---
 
-Verification Scenarios:
+## Practical Learning Outcomes
 
-Test Case 1
+- Designed a communication protocol in Verilog end-to-end
+- Converted parallel data into serial data streams
+- Implemented an FSM-controlled digital system
+- Developed and executed functional verification testbenches
+- Understood hardware–software interaction through serial terminals
+- Deployed an RTL design onto FPGA hardware and debugged it in the field
+- Validated functionality using both PC and mobile interfaces
 
-Data: 0xAA
+---
 
-Expected Pattern:
-10101010
-
-Purpose:
-Verify alternating bit transmission.
-
-Test Case 2
-
-Data: 0x55
-
-Expected Pattern:
-01010101
-
-Purpose:
-Verify complementary alternating pattern.
-
-Test Case 3
-
-Data: 0x00
-
-Expected Pattern:
-00000000
-
-Purpose:
-Verify all-zero transmission.
-
-Test Case 4
-
-Data: 0xFF
-
-Expected Pattern:
-11111111
-
-Purpose:
-Verify all-one transmission.
-
-The testbench:
-
-Generates a 100 MHz clock.
-Applies reset sequences.
-Simulates button presses.
-Verifies debounce operation.
-Monitors UART output behavior.
-Generates waveform files for debugging and analysis.
-FPGA Implementation
-
-After successful simulation, the UART transmitter was implemented on the FPGA development board during the internship.
-
-Implementation Activities:
-
-RTL synthesis
-Design implementation
-Bitstream generation
-FPGA programming
-Hardware debugging
-
-Hardware Inputs:
-
-Switches used for entering 8-bit data.
-Push-button used to trigger transmission.
-Reset button for system reset.
-Hardware Validation
-
-The UART transmitter was validated through real serial communication interfaces.
-
-Validation using Tera Term
-
-The FPGA UART output was connected to a laptop.
-
-Observed:
-
-Correct reception of transmitted characters.
-Stable serial communication.
-Proper UART frame generation.
-Validation using Bluetooth Serial Terminal Application
-
-The UART output was also tested using a Bluetooth serial interface connected to a mobile phone.
-
-Observed:
-
-Successful wireless serial communication.
-Correct data reception on the mobile application.
-Consistent behavior with hardware implementation.
-
-This provided practical confirmation that the UART transmitter functioned correctly beyond simulation environments.
-
-Key Concepts Demonstrated
-Verilog RTL Design
-Finite State Machine (FSM) Design
-UART Communication Protocol
-Shift Register Design
-Baud Rate Generation
-Counter Design
-Button Debouncing
-Clock Synchronization
-Testbench Development
-Functional Verification
-FPGA Implementation Flow
-Hardware Debugging
-Serial Communication Validation
-Practical Learning Outcomes
-
-This project provided hands-on exposure to the complete FPGA and digital design workflow.
-
-Key takeaways include:
-
-Designing communication protocols in Verilog.
-Converting parallel data into serial data streams.
-Implementing FSM-controlled digital systems.
-Developing and executing functional verification testbenches.
-Understanding hardware-software interaction through serial terminals.
-Deploying RTL designs onto FPGA hardware.
-Debugging real-world digital systems.
-Validating functionality using both PC and mobile interfaces.
-Career Relevance
+## Career Relevance
 
 This project demonstrates practical skills relevant to:
 
-RTL Design Engineer
-FPGA Design Engineer
-Digital Design Engineer
-Entry-Level Design Verification Engineer
+- RTL Design Engineer
+- FPGA Design Engineer
+- Digital Design Engineer
+- Entry-Level Design Verification Engineer
 
-The project showcases the complete engineering flow from RTL development and simulation to FPGA implementation and hardware validation.
-Combined with FSM-based digital design projects and future processor-level projects such as RISC-V, this work strengthens core competencies required in VLSI design and verification domains.
+It showcases the complete engineering flow — from RTL development and simulation to FPGA implementation and hardware validation — and complements FSM-based digital design work and processor-level projects such as [RISC-V_32bit](https://github.com/Ganesh-Koushal/RISC-V_32bit).
 
-Tools Used
-Verilog HDL
-Vivado Design Suite
-Boolean FPGA Board
-Tera Term
-Bluetooth Serial Terminal Application
-Waveform Analysis Tools
+---
+
+## Tools Used
+
+- Verilog HDL
+- Vivado Design Suite
+- Boolean FPGA Board
+- Tera Term
+- Bluetooth Serial Terminal Application
+- Waveform Analysis Tools
